@@ -9,14 +9,24 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "userInterfaceStyle": "light",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow access to scan barcodes.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.yourcompany.DietCode"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#FFFFFF"
       },
-      "edgeToEdgeEnabled": true
+      "permissions": [
+        "CAMERA"
+      ],
+      "package": "com.yourcompany.DietCode",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",
@@ -25,18 +35,36 @@
     },
     "plugins": [
       "expo-router",
+      "expo-camera",
       [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#FFFFFF"
         }
-      ]
+      ],
+      "expo-web-browser",
+      "expo-font",
+      "expo-audio",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "androidStatusBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#FFFFFF",
+      "translucent": false
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "623ab5cf-b66f-4eee-9965-6bc928056074"
+      }
     }
   }
 }
