@@ -1,5 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, ReactNode, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import { Product } from '../types/Product';
 
@@ -56,7 +63,13 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     );
   }, [favorites]);
 
-  const addProductToHistory = (product: Product) => {
+  // Create a Set for O(1) favorite lookups
+  const favoriteIds = useMemo(
+    () => new Set(favorites.map((p) => p.id)),
+    [favorites]
+  );
+
+  const addProductToHistory = useCallback((product: Product) => {
     setHistory((prev) => {
       const index = prev.findIndex((p) => p.id === product.id);
       if (index !== -1) {
@@ -66,9 +79,9 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
       }
       return [{ ...product, time: new Date().toLocaleString() }, ...prev];
     });
-  };
+  }, []);
 
-  const toggleFavorite = (product: Product) => {
+  const toggleFavorite = useCallback((product: Product) => {
     setFavorites((prev) => {
       const exists = prev.find((p) => p.id === product.id);
       if (exists) {
@@ -76,32 +89,49 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
       }
       return [{ ...product, time: new Date().toLocaleString() }, ...prev];
     });
-  };
+  }, []);
 
-  const isFavorite = (id: string) => {
-    return favorites.some((p) => p.id === id);
-  };
+  const isFavorite = useCallback(
+    (id: string) => {
+      return favoriteIds.has(id);
+    },
+    [favoriteIds]
+  );
 
-  const clearHistory = () => setHistory([]);
+  const clearHistory = useCallback(() => setHistory([]), []);
 
-  const getProductById = (id: string): Product | undefined => {
-    return (
-      history.find((p) => p.id === id) || favorites.find((p) => p.id === id)
-    );
-  };
+  const getProductById = useCallback(
+    (id: string): Product | undefined => {
+      return (
+        history.find((p) => p.id === id) || favorites.find((p) => p.id === id)
+      );
+    },
+    [history, favorites]
+  );
+
+  const contextValue = useMemo(
+    () => ({
+      history,
+      favorites,
+      addProductToHistory,
+      toggleFavorite,
+      isFavorite,
+      clearHistory,
+      getProductById,
+    }),
+    [
+      history,
+      favorites,
+      addProductToHistory,
+      toggleFavorite,
+      isFavorite,
+      clearHistory,
+      getProductById,
+    ]
+  );
 
   return (
-    <ProductContext.Provider
-      value={{
-        history,
-        favorites,
-        addProductToHistory,
-        toggleFavorite,
-        isFavorite,
-        clearHistory,
-        getProductById,
-      }}
-    >
+    <ProductContext.Provider value={contextValue}>
       {children}
     </ProductContext.Provider>
   );

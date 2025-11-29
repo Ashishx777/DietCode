@@ -10,21 +10,24 @@ export default function HistoryList({ data }: { data: Product[] }) {
 
   useEffect(() => {
     const refetchMissingData = async () => {
-      for (const item of data) {
-        const needsRefetch =
-          !item.image || !item.aiScore || !item.nutrients?.fat;
+      const itemsToRefetch = data.filter(
+        (item) => !item.image || !item.aiScore || !item.nutrients?.fat
+      );
 
-        if (needsRefetch) {
-          const updated = await fetchProductByBarcode(item.id);
-          if (updated) {
-            const enriched = {
-              ...updated,
-              time: new Date().toISOString(),
-            };
-            addProductToHistory(enriched);
-          }
+      if (itemsToRefetch.length === 0) return;
+
+      const results = await Promise.all(
+        itemsToRefetch.map((item) => fetchProductByBarcode(item.id))
+      );
+
+      results.forEach((updated) => {
+        if (updated) {
+          addProductToHistory({
+            ...updated,
+            time: new Date().toISOString(),
+          });
         }
-      }
+      });
     };
 
     if (data && data.length > 0) refetchMissingData();

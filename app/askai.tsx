@@ -2,7 +2,7 @@ import { askAI } from '@/lib/askAI';
 import useVoiceAssistant from '@/lib/useVoiceAssistant';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, BotIcon, Mic, MicOff } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
@@ -53,6 +53,7 @@ export default function AskAI() {
   const [loading, setLoading] = useState(false);
   const [animatedText, setAnimatedText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
+  const animationRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (scrollViewRef.current) {
@@ -60,11 +61,49 @@ export default function AskAI() {
     }
   }, [messages, animatedText]);
 
+  // Cleanup animation on unmount
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        clearInterval(animationRef.current);
+      }
+    };
+  }, []);
+
+  // Memoized animation function that batches word updates
+  const animateText = useCallback(
+    (fullText: string): Promise<void> => {
+      return new Promise((resolve) => {
+        const words = fullText.split(' ');
+        let wordIndex = 0;
+        const WORDS_PER_BATCH = 3;
+        const BATCH_INTERVAL = 50;
+
+        animationRef.current = setInterval(() => {
+          const endIndex = Math.min(wordIndex + WORDS_PER_BATCH, words.length);
+          const currentText = words.slice(0, endIndex).join(' ') + ' ';
+          setAnimatedText(currentText);
+          wordIndex = endIndex;
+
+          if (wordIndex >= words.length) {
+            if (animationRef.current) {
+              clearInterval(animationRef.current);
+              animationRef.current = null;
+            }
+            resolve();
+          }
+        }, BATCH_INTERVAL);
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     if (product) {
       const intro = `Can you tell me if this product is healthy?\n\nName: ${product.name}\nAI Score: ${product.aiScore}\nIngredients: ${product.ingredients}`;
       handleSend(intro);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product]);
 
   const handleSend = async (text: string) => {
@@ -112,14 +151,8 @@ Style guide:
         { role: 'user', content: message },
       ]);
       const formattedReply = aiReply.replace(/(\d+)\.\s/g, '\n\n$1. ');
-      const words = formattedReply.split(' ');
-      let current = '';
 
-      for (let i = 0; i < words.length; i++) {
-        current += words[i] + ' ';
-        setAnimatedText(current);
-        await new Promise((resolve) => setTimeout(resolve, 30));
-      }
+      await animateText(formattedReply);
       setMessages((prev) => [...prev, { from: 'ai', text: formattedReply }]);
     } catch {
       setMessages((prev) => [
