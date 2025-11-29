@@ -98,15 +98,8 @@ export default function AskAI() {
     []
   );
 
-  useEffect(() => {
-    if (product) {
-      const intro = `Can you tell me if this product is healthy?\n\nName: ${product.name}\nAI Score: ${product.aiScore}\nIngredients: ${product.ingredients}`;
-      handleSend(intro);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product]);
-
-  const handleSend = async (text: string) => {
+  const handleSend = useCallback(
+    async (text: string) => {
     console.log('Sending message:', text);
     const message = text.trim();
     if (!message) return;
@@ -143,11 +136,15 @@ Style guide:
       if (message.toLowerCase().includes('weight loss')) {
         dynamicPrompt = `Answer as a weight loss nutritionist. Focus on calories, fat, and sugar. Suggest healthier options if needed.`;
       } else if (message.toLowerCase().includes('diabetes')) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         dynamicPrompt = `Respond with blood sugar safety in mind. Highlight sugar and carb levels.`;
       }
+
+      const fullSystemPrompt = dynamicPrompt
+        ? `${systemPrompt}\n\nAdditional context: ${dynamicPrompt}`
+        : systemPrompt;
+
       const aiReply = await askAI([
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: fullSystemPrompt },
         { role: 'user', content: message },
       ]);
       const formattedReply = aiReply.replace(/(\d+)\.\s/g, '\n\n$1. ');
@@ -163,7 +160,16 @@ Style guide:
       setAnimatedText('');
       setLoading(false);
     }
-  };
+    },
+    [animateText]
+  );
+
+  useEffect(() => {
+    if (product) {
+      const intro = `Can you tell me if this product is healthy?\n\nName: ${product.name}\nAI Score: ${product.aiScore}\nIngredients: ${product.ingredients}`;
+      handleSend(intro);
+    }
+  }, [product, handleSend]);
 
   const { listening, startListening, stopListening } = useVoiceAssistant({
     onResult: (text) => {

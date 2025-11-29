@@ -16,14 +16,14 @@ export default function HistoryList({ data }: { data: Product[] }) {
 
       if (itemsToRefetch.length === 0) return;
 
-      const results = await Promise.all(
+      const results = await Promise.allSettled(
         itemsToRefetch.map((item) => fetchProductByBarcode(item.id))
       );
 
-      results.forEach((updated) => {
-        if (updated) {
+      results.forEach((result) => {
+        if (result.status === 'fulfilled' && result.value) {
           addProductToHistory({
-            ...updated,
+            ...result.value,
             time: new Date().toISOString(),
           });
         }
