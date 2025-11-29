@@ -53,7 +53,7 @@ export default function AskAI() {
   const [loading, setLoading] = useState(false);
   const [animatedText, setAnimatedText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
-  const animationRef = useRef<NodeJS.Timeout | null>(null);
+  const animationRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (scrollViewRef.current) {
@@ -100,7 +100,6 @@ export default function AskAI() {
 
   const handleSend = useCallback(
     async (text: string) => {
-    console.log('Sending message:', text);
     const message = text.trim();
     if (!message) return;
     setShowSuggestions(false);
