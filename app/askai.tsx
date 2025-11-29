@@ -2,7 +2,7 @@ import { askAI } from '@/lib/askAI';
 import useVoiceAssistant from '@/lib/useVoiceAssistant';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, BotIcon, Mic, MicOff } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
@@ -53,6 +53,7 @@ export default function AskAI() {
   const [loading, setLoading] = useState(false);
   const [animatedText, setAnimatedText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
+  const animationRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (scrollViewRef.current) {
@@ -60,15 +61,45 @@ export default function AskAI() {
     }
   }, [messages, animatedText]);
 
+  // Cleanup animation on unmount
   useEffect(() => {
-    if (product) {
-      const intro = `Can you tell me if this product is healthy?\n\nName: ${product.name}\nAI Score: ${product.aiScore}\nIngredients: ${product.ingredients}`;
-      handleSend(intro);
-    }
-  }, [product]);
+    return () => {
+      if (animationRef.current) {
+        clearInterval(animationRef.current);
+      }
+    };
+  }, []);
 
-  const handleSend = async (text: string) => {
-    console.log('Sending message:', text);
+  // Memoized animation function that batches word updates
+  const animateText = useCallback(
+    (fullText: string): Promise<void> => {
+      return new Promise((resolve) => {
+        const words = fullText.split(' ');
+        let wordIndex = 0;
+        const WORDS_PER_BATCH = 3;
+        const BATCH_INTERVAL = 50;
+
+        animationRef.current = setInterval(() => {
+          const endIndex = Math.min(wordIndex + WORDS_PER_BATCH, words.length);
+          const currentText = words.slice(0, endIndex).join(' ') + ' ';
+          setAnimatedText(currentText);
+          wordIndex = endIndex;
+
+          if (wordIndex >= words.length) {
+            if (animationRef.current) {
+              clearInterval(animationRef.current);
+              animationRef.current = null;
+            }
+            resolve();
+          }
+        }, BATCH_INTERVAL);
+      });
+    },
+    []
+  );
+
+  const handleSend = useCallback(
+    async (text: string) => {
     const message = text.trim();
     if (!message) return;
     setShowSuggestions(false);
@@ -104,22 +135,20 @@ Style guide:
       if (message.toLowerCase().includes('weight loss')) {
         dynamicPrompt = `Answer as a weight loss nutritionist. Focus on calories, fat, and sugar. Suggest healthier options if needed.`;
       } else if (message.toLowerCase().includes('diabetes')) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         dynamicPrompt = `Respond with blood sugar safety in mind. Highlight sugar and carb levels.`;
       }
+
+      const fullSystemPrompt = dynamicPrompt
+        ? `${systemPrompt}\n\nAdditional context: ${dynamicPrompt}`
+        : systemPrompt;
+
       const aiReply = await askAI([
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: fullSystemPrompt },
         { role: 'user', content: message },
       ]);
       const formattedReply = aiReply.replace(/(\d+)\.\s/g, '\n\n$1. ');
-      const words = formattedReply.split(' ');
-      let current = '';
 
-      for (let i = 0; i < words.length; i++) {
-        current += words[i] + ' ';
-        setAnimatedText(current);
-        await new Promise((resolve) => setTimeout(resolve, 30));
-      }
+      await animateText(formattedReply);
       setMessages((prev) => [...prev, { from: 'ai', text: formattedReply }]);
     } catch {
       setMessages((prev) => [
@@ -130,7 +159,16 @@ Style guide:
       setAnimatedText('');
       setLoading(false);
     }
-  };
+    },
+    [animateText]
+  );
+
+  useEffect(() => {
+    if (product) {
+      const intro = `Can you tell me if this product is healthy?\n\nName: ${product.name}\nAI Score: ${product.aiScore}\nIngredients: ${product.ingredients}`;
+      handleSend(intro);
+    }
+  }, [product, handleSend]);
 
   const { listening, startListening, stopListening } = useVoiceAssistant({
     onResult: (text) => {

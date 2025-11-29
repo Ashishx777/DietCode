@@ -34,7 +34,6 @@ export default function FoodCapture() {
 
   const cameraRef = useRef<CameraView>(null);
   const translateY = useSharedValue(300);
-  const scanningRef = useRef(false);
 
   useEffect(() => {
     if (permission?.granted) {
@@ -149,12 +148,6 @@ export default function FoodCapture() {
     setProduct(null);
     setError(null);
   };
-  const handleBarcodeScanned = ({ data }: { data: string }) => {
-    if (!scanningRef.current) {
-      scanningRef.current = true;
-      fetchProductDetails(data.trim());
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -169,11 +162,11 @@ export default function FoodCapture() {
 
       <View style={styles.scannerContainer}>
         {!capturedImage ? (
-          (
+          <>
             <View style={styles.cameraBox}>
               <View style={styles.alignTextContainer}>
                 <Text style={styles.alignText}>
-                  Align the barcode within the frame
+                  Position the food in the frame
                 </Text>
               </View>
 
@@ -182,19 +175,14 @@ export default function FoodCapture() {
                   ref={cameraRef}
                   style={styles.camera}
                   facing="back"
-                  onBarcodeScanned={handleBarcodeScanned}
                 />
               )}
 
-              <View style={styles.barcodeFrameContainer} pointerEvents="none">
-                <View style={[styles.corner, styles.topLeft]} />
-                <View style={[styles.corner, styles.topRight]} />
-                <View style={[styles.corner, styles.bottomLeft]} />
-                <View style={[styles.corner, styles.bottomRight]} />
+              <View style={styles.foodFrameContainer} pointerEvents="none">
+                <View style={styles.foodFrame} />
               </View>
             </View>
-          ) >
-          (
+
             <View style={styles.controlsContainer}>
               <TouchableOpacity
                 style={styles.controlButton}
@@ -221,7 +209,7 @@ export default function FoodCapture() {
                 <Text style={styles.controlText}>Gallery</Text>
               </TouchableOpacity>
             </View>
-          )
+          </>
         ) : (
           <View style={styles.previewContainer}>
             <Image
@@ -286,7 +274,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   cameraBox: {
-    height: '8%',
+    flex: 1,
     width: '100%',
     borderRadius: 20,
     overflow: 'hidden',
@@ -304,46 +292,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginHorizontal: 30,
     marginVertical: 20,
-    fontSize: 30,
+    fontSize: 24,
     textAlign: 'center',
-  },
-  barcodeFrameContainer: {
-    position: 'absolute',
-    top: '55%',
-    left: '50%',
-    width: 250,
-    height: 200,
-    marginLeft: -125,
-    marginTop: -125,
-  },
-  corner: { position: 'absolute', width: 30, height: 30, borderColor: 'white' },
-  topLeft: {
-    top: 0,
-    left: 0,
-    borderTopWidth: 8,
-    borderLeftWidth: 4,
-    borderTopLeftRadius: 20,
-  },
-  topRight: {
-    top: 0,
-    right: 0,
-    borderTopWidth: 8,
-    borderRightWidth: 4,
-    borderTopRightRadius: 20,
-  },
-  bottomLeft: {
-    bottom: 0,
-    left: 0,
-    borderBottomWidth: 8,
-    borderLeftWidth: 4,
-    borderBottomLeftRadius: 20,
-  },
-  bottomRight: {
-    bottom: 0,
-    right: 0,
-    borderBottomWidth: 8,
-    borderRightWidth: 4,
-    borderBottomRightRadius: 20,
   },
   camera: { flex: 1 },
   foodFrameContainer: {
@@ -445,6 +395,3 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
-function fetchProductDetails(arg0: string) {
-  throw new Error('Function not implemented.');
-}
